@@ -9259,6 +9259,10 @@ function startShootout() {
   document.body.classList.add('luanLuu');
   setScreen('play'); resetHints();
   kickoff(0);                                   // dọn trạng thái như đầu trận (vị trí, bóng, phát lại...)
+  for (const p of allPlayers) {
+    const [qx, qz] = p.isGK && p.team === 1 ? [HL - 0.4, 0] : psoSpot(p);
+    p.x = p.spX = qx; p.z = p.spZ = qz; p.vx = p.vz = p.dvx = p.dvz = 0; p.face = p.vf = Math.atan2(HL - p.x, -p.z);
+  }
   state = 'pso'; stateT = 2.4;
   showMsg('ĐÁ LUÂN LƯU', 'Mỗi đội 5 lượt · hòa thì đá tiếp từng lượt · đội nhà sút trước', 2.4);
 }
@@ -9303,9 +9307,12 @@ function psoAI(dt) {
     moveTo(p, p.spX ?? p.x, p.spZ ?? p.z, 3);
   }
 }
-// Chỗ đứng chờ lượt: các bạn đứng trong vòng tròn giữa sân (đội nhà bên trái, đội bạn bên phải), thủ môn đội đang sút đứng cạnh
+// Chỗ đứng chờ lượt: các bạn đứng trong vòng tròn giữa sân (đội nhà bên trái, đội bạn bên phải); thủ môn đội đang sút
+// đứng trên vạch cầu môn ngoài vòng cấm như luật → tới lượt bắt chỉ đi vài mét là vào giữa khung thành
 function psoSpot(p) {
-  if (p.isGK) return [0.4 * (p.team ? 1 : -1), -(F7 ? 5.5 : 3.6)];
+  // thủ môn đội đang sút: đứng trên vạch cầu môn, ngoài vòng cấm; thủ môn nhà chờ phía dưới, thủ môn bạn chờ phía trên →
+  // lúc đổi lượt 2 thủ môn đi ra 2 phía khác nhau, không đâm vào nhau giữa khung thành
+  if (p.isGK) return [HL - 0.6, (p.team ? 1 : -1) * Math.min(GOAL_HW + (F7 ? 6 : 4.5), HW - 1)];
   const fl = p.t.players.filter((q) => !q.isGK), k = fl.indexOf(p);
   return [p.team ? 1.3 : -1.3, (k - (fl.length - 1) / 2) * 1.25];
 }
@@ -9533,7 +9540,10 @@ function updateSetPiece(dt) {
   const tk = s.taker, arrived = Math.hypot(tk.x - s.sx, tk.z - s.sz) < 0.4;
   const wait = s.type === 'fk' || s.type === 'pen' ? 1.8 : 1.1;   // đá phạt / phạt đền: chờ mọi người vào đúng chỗ lâu hơn
   const wallReady = !s.wall || s.wallPlayers.every((p, k) => Math.hypot(p.x - s.wall[k].x, p.z - s.wall[k].z) < 0.6);
-  if ((arrived && s.t > wait && wallReady) || s.t > 4) {
+  const dg = s.type === 'pen' ? teams[1 - s.team].players[0] : null, gpx = gx - dir * 0.4;
+  const gkReady = !dg || Math.hypot(dg.x - gpx, dg.z) < 0.5;
+  if ((arrived && s.t > wait && wallReady && gkReady) || (s.t > 4 && gkReady) || s.t > 8) {
+    if (dg && !gkReady) { dg.x = gpx; dg.z = 0; dg.vx = dg.vz = dg.dvx = dg.dvz = 0; }
     tk.x = s.sx; tk.z = s.sz; tk.vx = tk.vz = tk.dvx = tk.dvz = 0;
     // Hàng rào chưa kịp chạy tới thì xếp nốt vào đúng chỗ (tránh cảnh con sút khi hàng rào còn đang chạy)
     if (s.wall) s.wallPlayers.forEach((p, k) => { p.x = s.wall[k].x; p.z = s.wall[k].z; p.vx = p.vz = 0; p.face = Math.atan2(s.x - p.x, s.z - p.z); });
