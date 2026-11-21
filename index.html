@@ -70,7 +70,8 @@ html,body{margin:0;height:100%;overflow:hidden;background:#8fcdf3;font-family:'B
 .nutLon{display:block;width:100%;margin-top:12px;font:inherit;font-size:24px;font-weight:800;color:#fff;background:linear-gradient(#ff5a4e,#d62f24);border:none;border-radius:16px;padding:8px;cursor:pointer;box-shadow:0 6px 0 #9e1f17}
 .nutLon:active{transform:translateY(3px);box-shadow:0 3px 0 #9e1f17}
 .nutLon.xanh{background:linear-gradient(#3f7fe0,#1f4fa0);box-shadow:0 6px 0 #143a78}
-.hangNut{display:grid;grid-template-columns:1.5fr 1fr;gap:10px;margin-top:12px}
+.hangNut{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:10px;margin-top:12px}
+.hangNut .nutLon.vang,.hangNut .nutLon.xanh{font-size:19px}
 .hangNut .nutLon{margin-top:0}
 .nutLon.vang{background:linear-gradient(#ffcf3f,#f0a500);box-shadow:0 6px 0 #b77d00;color:#3b2a00}
 .tuyChon{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:14px;font-weight:600;color:#4a6178;cursor:pointer}
@@ -247,6 +248,7 @@ kbd.dai{min-width:90px}
     <div class="hang"><label>Đồ họa</label><div class="chonNhom" id="chonDoHoa"></div></div>
     <div class="hangNut">
       <button class="nutLon" id="nutBatDau">VÀO SÂN!</button>
+      <button class="nutLon vang" id="nutLuanLuu">🥅 LUÂN LƯU</button>
       <button class="nutLon xanh" id="nutHuongDan">📖 HƯỚNG DẪN</button>
     </div>
     <button id="nutToanMan2" class="an"></button>
@@ -4902,7 +4904,9 @@ const GK_KITS = ['#00acc1', '#43a047'];
 const OLD_DEFAULT_SETS = [['Hải', 'Đức', 'Khôi', 'An', 'Minh'], ['Hải', 'Quang Vinh', 'Minh Đức', 'Bảo Nam', 'Dù']];
 // Sân 7 người thêm 2 bạn (chỉ số 5, 6): tên mặc định TẠM ĐẶT, con đổi được ở mục "Tên cầu thủ đội mình".
 // 5 bạn đầu giữ nguyên chỉ số ở cả 2 chế độ sân (0 thủ môn, 1 hậu vệ, 2 tiền vệ trái, 3 tiền vệ phải, 4 tiền đạo số 10)
-const DEFAULT_NAMES = ['Hải', 'Quang Vinh', 'Minh Đức', 'Bảo Nam', 'Ông Dù', 'Gia Bảo', 'Đức Anh'];
+// (v21) đội hình mới: chỉ số 0 thủ môn · 1 hậu vệ · 2 TIỀN ĐẠO (Quang Vinh) · 3 tiền vệ phải · 4 TIỀN VỆ TRÁI (Ông Dù, số 10)
+// · 5 hậu vệ phải (sân 7) · 6 tiền vệ giữa (sân 7) – đội nhà đổi chỗ đứng của chỉ số 2 và 4 (xem slotsOf)
+const DEFAULT_NAMES = ['Sỹ Cường', 'Triều Phong', 'Quang Vinh', 'Hoàng Nam', 'Ông Dù', 'Minh Khang', 'Minh Đức'];
 const TRAITS = ['bắt bóng giỏi', 'cướp bóng giỏi', 'chạy nhanh', 'chuyền chuẩn', 'sút mạnh', 'tranh bóng chắc', 'chạy khắp sân'];
 // Kho tên ngẫu nhiên cho đội bạn (tách tên bạn nam / bạn nữ để khớp kiểu tóc)
 const BOY_NAMES = ['Tuấn', 'Hùng', 'Long', 'Phúc', 'Quân', 'Huy', 'Duy', 'Thành', 'Vinh', 'Hoàng', 'Lâm', 'Khang', 'Kiên', 'Tùng', 'Đạt', 'Trung', 'Sơn', 'Hiếu', 'Bình', 'Phong'];
@@ -4915,6 +4919,11 @@ if (!Array.isArray(settings.names) || settings.names.length < 5) settings.names 
 // tên người chơi tự đặt khác thì giữ nguyên
 if (OLD_DEFAULT_SETS.some((o) => o.join('|') === settings.names.slice(0, 5).join('|'))) settings.names.splice(0, 5, ...DEFAULT_NAMES.slice(0, 5));
 if (settings.names[4] === 'Dù') settings.names[4] = 'Ông Dù';
+// (v21) đội hình mới theo yêu cầu của bố: áp 1 lần cho máy đã lưu tên cũ (tên con tự đặt trước đó cũng được thay)
+if (settings.rosterV !== 21) {
+  settings.names = DEFAULT_NAMES.slice(); settings.girls = DEFAULT_NAMES.map(() => false); settings.rosterV = 21;
+  try { localStorage.setItem('bongda_times_school', JSON.stringify(settings)); } catch (e) { /* bỏ qua */ }
+}
 if (!Array.isArray(settings.girls) || settings.girls.length < 5) settings.girls = DEFAULT_NAMES.map(() => false);
 // Bản cũ lưu 5 tên (sân 5 người): thêm tên mặc định cho 2 bạn mới của sân 7, giữ nguyên 5 tên con đã đặt
 while (settings.names.length < DEFAULT_NAMES.length) settings.names.push(DEFAULT_NAMES[settings.names.length]);
@@ -6430,13 +6439,22 @@ const teams = [
   { idx: 0, dir: 1, name: 'Đội Times', score: 0, players: [], ai: HOME_AI, form: homeForm(), style: settings.style },
   { idx: 1, dir: -1, name: 'Đội Bạn', score: 0, players: [], ai: LEVELS.normal, form: FORM_KEYS[0], style: 'bal' },
 ];
-const formOf = (t) => FORMS[t.form] || FORMS[FORM_KEYS[0]];
+// (v21) Đội nhà: Ông Dù (chỉ số 4, số 10, nhân vật của con) đá TIỀN VỆ TRÁI, chỉ số 2 (Quang Vinh) đá TIỀN ĐẠO → đổi chỗ đứng
+// của 2 chỉ số này. Giữ chỉ số 4 cho Ông Dù vì số áo, ngoại hình, giao bóng, đá phạt đền đều gắn với chỉ số
+const slotsOf = (t, key) => {
+  const f = FORMS[key] || FORMS[FORM_KEYS[0]];
+  if (t.idx !== 0) return f;
+  const g = f.slice(); [g[2], g[4]] = [g[4], g[2]]; return g;
+};
+const formOf = (t) => slotsOf(t, t.form);
+// (v21) cầu thủ theo chỉ số gốc (cầu thủ bị thẻ đỏ tạm rời danh sách đội → không dùng t.players[i] trực tiếp)
+const pIdx = (t, i) => t.players.find((p) => p.idx === i) || t.players.find((p) => !p.isGK) || t.players[0];
 const styleOf = (t) => STYLES[t.style] || STYLES.bal;
 // Đổi đội hình giữa chừng (khi tạm dừng): chỉ đổi chỗ đứng cơ sở của từng bạn, các bạn tự chạy về vị trí mới
 function setFormation(t, key) {
   if (!FORMS[key]) return;
   t.form = key;
-  t.players.forEach((p, i) => { p.role = FORMS[key][i]; p.spot = null; });
+  const sl = slotsOf(t, key); t.players.forEach((p) => { p.role = sl[p.idx]; p.spot = null; });
 }
 // Đội bạn chọn đội hình, lối chơi ngẫu nhiên mỗi trận (mức Dễ không dùng lối dồn ép – quá khó với các bạn mới chơi)
 function pickAwayTactic() {
@@ -6446,6 +6464,11 @@ function pickAwayTactic() {
 }
 const tacticText = (t) => `${F7 ? t.form + ' · ' : ''}${styleOf(t).full}`;
 const allPlayers = [];
+// (v21) cầu thủ đang bị thẻ đỏ: tạm rời danh sách đội (t.players, allPlayers) → mọi phần trí tuệ máy, chuyền bóng, kèm người,
+// đổi người, xếp chỗ bóng chết đều tự không tính tới; đứng ở khu kỹ thuật ngoài biên dọc, hết 1 phút thì vào lại
+const benched = [];
+const SEND_OFF_S = 60;
+let sendOffQ = [];
 
 let state = 'kickoff';   // kickoff | play | goal | end
 let stateT = 0;          // bộ đếm của trạng thái hiện tại (s)
@@ -6468,7 +6491,7 @@ function createPlayers() {
   for (const t of teams) {
     formOf(t).forEach((r, i) => {
       const gk = r.line === 'G';
-      const look = t.idx === 0 ? lookFor(!!settings.girls[i]) : randomLook();
+      const look = t.idx === 0 ? lookFor(!!settings.girls[i]) : lookFor(false);   // (v21) đội bạn: toàn bạn nam
       if (t.idx === 0 && i === 4 && !settings.girls[4]) Object.assign(look, { style: 'fringe', hair: '#15110f', skin: '#eac09a', build: 0.8, h: 1.02, glasses: false, freckles: false, face: 'long', eyeS: 1.05, eyeGap: 0.115, browTilt: 0.1, browThick: 0.024, nose: 1, ear: 1.25, mouth: 'smile', belly: false });
       const p = {
         t, team: t.idx, idx: i, role: r, isGK: gk, num: NUMBERS[t.idx][i], kid: null, look, name: '',
@@ -6489,7 +6512,117 @@ function createPlayers() {
   if (F7) { h[5].tkl = 0.08; h[6].spd = 1.04; }
   for (const p of teams[1].players) if (!p.isGK) p.spd = rand(0.97, 1.05);
   for (const p of allPlayers) p.kid = kidForPlayer(p);
+  buildReferee();
 }
+/* ---------- (v21) TRỌNG TÀI ----------
+   Người lớn (cao hơn các bạn ~28%), áo đen viền vàng. Chạy theo bóng ở chéo góc: cách bóng ~6,5 m (sân 7: 8 m) về phía giữa
+   sân, tránh đứng đè lên cầu thủ, mặt luôn nhìn bóng (chạy ngang / chạy lùi dùng clip chạy 8 hướng như cầu thủ).
+   Phạm lỗi có thẻ: chạy tới người phạm lỗi, giơ thẻ lên cao (tấm thẻ cầm ở tay phải). Đoạn mở đầu, phát lại: ẩn. */
+const REF = { k: null, x: 0, z: -6, vx: 0, vz: 0, face: 0, gait: 0, card: null, cardT: -9, cardP: null, mesh: null, sh: null };
+const CARD_SHOW = 2.4;
+function buildReferee() {
+  const look = Object.assign(lookFor(false), { hair: '#2a211b', glasses: false, freckles: false, belly: false, build: 1, h: 1 });
+  REF.k = makeKid(Object.assign({}, look, { shirt: '#1d1d1f', shorts: '#1d1d1f', socks: '#1d1d1f', trim: '#f2c200', boot: '#111111', scale: 1.28 }));
+  // tấm thẻ: con của khớp bàn tay phải; tay buông thì thẻ chúc xuống, giơ tay lên thì thẻ hướng lên trời
+  REF.mesh = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.15, 0.01), new THREE.MeshBasicMaterial({ color: '#ffd400' }));
+  REF.mesh.position.set(0, -0.12, 0.03); REF.mesh.visible = false; REF.k.bones[14].add(REF.mesh);
+  REF.sh = addShadow(0.9);
+}
+function refReset() { REF.x = 0; REF.z = -(F7 ? 7.5 : 5.5); REF.vx = REF.vz = 0; REF.card = null; REF.cardP = null; if (REF.mesh) REF.mesh.visible = false; }
+function refStep(dt) {
+  if (!REF.k) return;
+  const b = ball, showing = REF.card && gt - REF.cardT < CARD_SHOW && REF.cardP;
+  let tx, tz, spd = 5.2;
+  if (showing) {                                   // chạy tới cách người phạm lỗi 2,2 m
+    const p = REF.cardP, dx = REF.x - p.x, dz = REF.z - p.z, d = Math.hypot(dx, dz) || 1;
+    tx = p.x + dx / d * 2.2; tz = p.z + dz / d * 2.2; spd = 5.5;
+  } else if (pso) { tx = HL - (F7 ? 12 : 8.5); tz = -4.5; spd = 3; }   // đá luân lưu: đứng cạnh vòng cấm
+  else if (state === 'kickoff' || state === 'half' || state === 'end') { tx = 0; tz = -(F7 ? 7.5 : 5.5); spd = 3; }
+  else {
+    const side = b.z > 0 ? -1 : 1;
+    tx = clamp(b.x * 0.82, -HL + 4, HL - 4); tz = clamp(b.z + side * (F7 ? 8 : 6.5), -HW + 1, HW - 1);
+  }
+  for (const p of allPlayers) {                    // không đứng đè lên cầu thủ
+    const dx = tx - p.x, dz = tz - p.z, d = Math.hypot(dx, dz);
+    if (d < 1.5 && d > 1e-3) { tx += dx / d * (1.5 - d); tz += dz / d * (1.5 - d); }
+  }
+  let dvx = tx - REF.x, dvz = tz - REF.z; const dd = Math.hypot(dvx, dvz), want = dd < 0.4 ? 0 : Math.min(spd, dd * 1.6);
+  dvx = dd ? dvx / dd * want : 0; dvz = dd ? dvz / dd * want : 0;
+  const acc = 7 * dt; let ax = dvx - REF.vx, az = dvz - REF.vz; const a = Math.hypot(ax, az);
+  if (a > acc) { ax *= acc / a; az *= acc / a; }
+  REF.vx += ax; REF.vz += az; REF.x += REF.vx * dt; REF.z += REF.vz * dt;
+  const lx = (showing ? REF.cardP.x : b.x) - REF.x, lz = (showing ? REF.cardP.z : b.z) - REF.z;
+  if (Math.hypot(lx, lz) > 0.3) { let d = Math.atan2(lx, lz) - REF.face; d = Math.atan2(Math.sin(d), Math.cos(d)); REF.face += clamp(d, -6 * dt, 6 * dt); }
+  if (REF.card && gt - REF.cardT > CARD_SHOW) { REF.card = null; REF.cardP = null; }
+}
+function refVisual(dt, time) {
+  const R = REF, k = R.k;
+  if (!k) return;
+  const show = !(state === 'intro' || state === 'replay' || rep);
+  k.root.visible = show; R.sh.visible = show;
+  if (!show) return;
+  const sp = Math.hypot(R.vx, R.vz);
+  if (MOCAP && k.bones) {
+    const P = _pose; poseClear(P);
+    const wi = band(sp, 0, 0, 0.3, 0.9), wk = band(sp, 0.3, 0.9, 1.2, 1.7), wm = MXF ? band(sp, 1.2, 1.7, 2.0, 3.0) : 0;
+    const wj = MXF ? band(sp, 2.0, 3.0, 99, 99) : band(sp, 1.4, 2.2, 99, 99);
+    const fx = Math.sin(R.face), fz = Math.cos(R.face), th = sp > 0.5 ? Math.atan2(R.vx * fz - R.vz * fx, R.vx * fx + R.vz * fz) : 0;
+    const wD = MXD ? clamp((Math.abs(th) - 0.35) / 0.35, 0, 1) * clamp((sp - 1.0) / 0.6, 0, 1) : 0, dW = wD > 0 ? dirBlend(th) : null;
+    const g = wk + wm + wj;
+    if (g > 0) {
+      let sD = 0; if (dW) for (const c of MX_DIR) sD += dW[c] * MX_DIR_STRIDE[c];
+      const sF = MXF ? (wk * ST_WALK + wm * ST_JOGS + wj * ST_JOG) / g : (wk * 1.0 + wj * 1.9) / g;
+      R.gait = (R.gait + clamp(sp / ((sF * (1 - wD) + sD * wD) * 1.28), 0, 3) * dt) % 1;
+    }
+    poseAdd(P, 'Idle_Loop', (time / 2.5) % 1, wi);
+    poseAdd(P, 'Walk_Loop', R.gait, wk * (1 - wD)); poseAdd(P, 'Jog_Fwd_Loop', R.gait, wj * (1 - wD));
+    if (wm > 0) poseAdd(P, 'MX_JogF', (R.gait + MX_DIR_PH.MX_JogF) % 1, wm * (1 - wD));
+    if (dW) for (const c of MX_DIR) if (dW[c] > 0) poseAdd(P, c, (R.gait + MX_DIR_PH[c]) % 1, g * wD * dW[c]);
+    poseFinish(P); poseApply(k, P);
+    const up = R.card && gt - R.cardT > 0.5 && gt - R.cardT < CARD_SHOW;   // giơ thẻ: tay phải thẳng lên trời
+    if (up) waveArm(k.bones[12], k.bones[13], -1, 0, 1);
+    R.mesh.visible = !!up;
+  }
+  k.root.position.set(R.x, 0, R.z); k.root.rotation.y = R.face; R.sh.position.set(R.x, 0.03, R.z);
+}
+/* ---------- (v21) THẺ PHẠT ----------
+   Theo mức độ pha phạm lỗi (bảng xác suất, chỉ áp trong trận thật, thủ môn không bị thẻ):
+   - xoạc từ phía sau mà trượt bóng: thẻ vàng 60%; xoạc sau lưng có chạm bóng 30%; xoạc trước mặt trượt bóng 25%
+   - cướp đứng phạm lỗi từ phía sau 12%; máy vào bóng từ phía sau trượt bóng 30%
+   - phạm lỗi từ phía sau, trượt bóng, với người đang cầm bóng ở gần khung thành (cơ hội ghi bàn rõ ràng): thẻ đỏ 50%
+   - 2 thẻ vàng trong trận = thẻ đỏ. Thẻ đỏ: ra ngoài 1 phút đồng hồ trận (SEND_OFF_S) rồi vào lại sân */
+function cardFor(off, vic, info) {
+  if (demo || pso || !info || off.isGK) return null;
+  const k = info.kind, bh = info.behind, won = info.won;
+  const gx = teams[vic.team].dir * HL, dGoal = Math.hypot(gx - vic.x, vic.z);
+  const clear = bh && !won && info.hadBall && dGoal < (F7 ? 16 : 12) && Math.abs(vic.z) < GOAL_HW + 4;
+  if (clear && k !== 'stand' && Math.random() < 0.5) return 'red';
+  const pY = k === 'slide' ? (bh ? (won ? 0.3 : 0.6) : (won ? 0.05 : 0.25)) : k === 'stand' ? (bh ? 0.12 : 0.03) : (bh ? (won ? 0.15 : 0.3) : 0.06);
+  return Math.random() < pY ? 'yellow' : null;
+}
+function sendOff(p) {
+  const t = p.t;
+  if (!t.players.includes(p)) return;
+  t.players.splice(t.players.indexOf(p), 1); allPlayers.splice(allPlayers.indexOf(p), 1); benched.push(p);
+  p.offT = SEND_OFF_S; p.vx = p.vz = p.dvx = p.dvz = 0; p.lunge = 0; p.fallen = 0; p.celebrate = false; p.setUntil = 0;
+  p.mxA = null; p.aw = 0; p.inWall = false; p.trick = null; p.trickFace = null;
+  const n = benched.filter((q) => q.team === p.team).length;
+  p.x = -t.dir * (2.5 + n * 1.2); p.z = -(HW + 1.3); p.face = 0; p.vf = 0;      // khu kỹ thuật bên biên dọc phía dưới
+  if (controlled === p) controlled = null;
+  if (ball.owner === p) ball.owner = null;
+  if (ball.passTarget === p) ball.passTarget = null;
+  REC.frames.length = 0;                                   // đoạn ghi phát lại đổi số người → bỏ đoạn cũ
+}
+function returnPlayer(p, quiet) {
+  const i = benched.indexOf(p); if (i < 0) return;
+  benched.splice(i, 1); p.offT = 0;
+  const t = p.t; t.players.push(p); t.players.sort((a, c) => a.idx - c.idx);
+  allPlayers.length = 0; for (const tt of teams) allPlayers.push(...tt.players);
+  p.x = -t.dir * 2; p.z = -(HW - 0.4); p.face = 0; p.vf = 0; p.vx = p.vz = p.dvx = p.dvz = 0;
+  REC.frames.length = 0;
+  if (!quiet && !demo) showMsg('TRỞ LẠI SÂN', `${p.name} (số ${p.num}) đã hết 1 phút ra ngoài`, 1.6);
+}
+function restoreBench() { while (benched.length) returnPlayer(benched[0], true); sendOffQ = []; for (const p of allPlayers) p.yellow = 0; }
 function kidForPlayer(p) {
   const gk = p.isGK, c = GK_KITS[p.t.idx];
   return makeKid(Object.assign({}, p.look, {
@@ -6509,10 +6642,10 @@ function rebuildPlayerKid(p) {
 }
 // Gán tên: đội nhà lấy từ ô nhập của con, đội bạn bốc ngẫu nhiên (khớp bạn nam/nữ)
 function assignNames(randomizeAway = true) {
-  teams[0].players.forEach((p, i) => { p.name = cleanName(settings.names[i]) || DEFAULT_NAMES[i]; });
+  teams[0].players.forEach((p) => { p.name = cleanName(settings.names[p.idx]) || DEFAULT_NAMES[p.idx]; });
   if (randomizeAway) {
-    const boys = shuffle(BOY_NAMES), girls = shuffle(GIRL_NAMES);
-    for (const p of teams[1].players) p.name = (p.look.girl ? girls : boys).pop();
+    const boys = shuffle(BOY_NAMES);
+    for (const p of teams[1].players) p.name = boys.pop();     // (v21) đội bạn: chỉ tên bạn nam
   }
   for (const p of allPlayers) setBackName(p);
 }
@@ -6908,7 +7041,7 @@ function kick(p, tx, tz, speed, lift, receiver = null, opt = {}) {
   b.handBan = opt.head || p.isGK ? -1 : p.team;
   b.aim = opt.aim || null; b.lob = !!opt.lob; b.curl = (sp && sp.side) || 0; b.fixed = null; b.power = !!opt.power; b.dip = !!opt.dip; b.kickZ = b.z;
   b.head = !!opt.head;
-  b.safeUntil = p.isGK ? gt + 0.7 : 0;      // bóng thủ môn vừa phát ra: đối thủ chưa được chặn ngay
+  b.safeUntil = p.isGK && !pso ? gt + 0.7 : 0;      // bóng thủ môn vừa phát ra: đối thủ chưa được chặn ngay
   b.blocked.clear(); b.blocked.add(p);
   p.noTouchUntil = gt + 0.3; p.kickT = 0.28; p.hold = 0; p.protectUntil = 0; p.setUntil = 0;
   // Động tác (mocap): đánh đầu / chuyền (bóng đi vừa phải tới đồng đội, bóng bổng) / sút; cứ 4 cú thì 1 cú bằng chân trái
@@ -6932,6 +7065,7 @@ function lobTo(p, tx, tz, receiver, flat = 1) {
 // Bóng ra ngoài sân: ghi nhận loại bóng chết, để bóng lăn thêm 0,7 s rồi mới đặt lại
 function ballOut(type, x, z, team) {
   if (state !== 'play') return;
+  if (pso) { if (pso.kicker) { const lk = ball.lastKicker; psoResult(false, lk && lk.isGK && lk.team !== pso.kicker.team ? 'save' : 'miss'); } return; }   // (v21) luân lưu: bóng ra ngoài = hết lượt
   state = 'out'; stateT = 0.7; pending = { type, x, z, team };
   input.charging = false; input.pCharging = null;
   if (!demo) Sound.whistle(1);
@@ -7214,13 +7348,13 @@ function checkPossession() {
       if (q.isGK && gkHands(q)) prob = 0.95;    // thủ môn lao ra trong vòng cấm thì gần như chắc chắn ôm được bóng
       if (prob <= 0) {
         // Máy đuổi sau lưng con không cướp được bóng, nhưng thỉnh thoảng phạm lỗi (ngáng chân) → đội mình được đá phạt
-        if (!q.isGK && Math.random() < foulChance('ai', true, false) * 0.2 * (teams[q.team].fouls >= 5 ? 0.4 : 1)) { swingLeg(q); commitFoul(q, o); break; }
+        if (!q.isGK && Math.random() < foulChance('ai', true, false) * 0.2 * (teams[q.team].fouls >= 5 ? 0.4 : 1)) { swingLeg(q); commitFoul(q, o, { kind: 'ai', behind: true, won: false }); break; }
         continue;
       }
       swingLeg(q);                              // đối thủ vung chân vào bóng: thấy rõ pha tranh chấp
       const won = Math.random() < prob;
       // Máy vào bóng cũng có lúc phạm lỗi (vào từ phía sau dễ phạm lỗi hơn) → trọng tài thổi phạt
-      if (!q.isGK && !(!demo && q === controlled) && Math.random() < foulChance('ai', front < -0.2, won) * (teams[q.team].fouls >= 5 ? 0.4 : 1)) { commitFoul(q, o); break; }
+      if (!q.isGK && !(!demo && q === controlled) && Math.random() < foulChance('ai', front < -0.2, won) * (teams[q.team].fouls >= 5 ? 0.4 : 1)) { commitFoul(q, o, { kind: 'ai', behind: front < -0.2, won }); break; }
       if (won) {
         if (gkHands(q)) gkCatch(q); else giveBall(q);
         if (mine) { shake = 0.15; Sound.touch(0.9); showHint('lost', true); }
@@ -7246,11 +7380,13 @@ function checkPossession() {
         }
         if (Math.abs(b.z) > GOAL_HW + 0.35) continue;      // bóng đi chệch khung thành: để bóng ra ngoài (phát bóng lên)
         const pen = penDive && penDive.gk === p;
-        if (pen && penDive.guess && (b.z - p.z) * penDive.guess < -0.5) continue;   // phạt đền: đã bay người sai hướng
+        // (v21) luân lưu: "đoán đúng" = bóng đi về nửa khung thành thủ môn đã chọn (so với giữa khung thành)
+        const right = pso && pen && penDive.guess && Math.sign(b.z) === penDive.guess && Math.abs(b.z) > 0.25;
+        if (pen && !right && penDive.guess && (b.z - p.z) * penDive.guess < -0.5) continue;   // phạt đền: đã bay người sai hướng
         // TẦM VỚI của thủ môn tiểu học (khung thành rộng 4 m): đứng yên với được 0,85 m, bay người 1,5 m.
         // Chỉ bay người được khi đã kịp phản xạ (phạt đền thì thủ môn đoán hướng trước nên luôn bay được)
         const react = pen || gt - (b.kickAt || 0) >= (p.t.ai.gkReact ?? 0.22);
-        const reach = p.dive > 0 && react ? 1.5 : 0.85;
+        const reach = right ? 1.9 : p.dive > 0 && react ? 1.5 : 0.85;
         if (d > reach || b.y > 2.1) continue;
         p.lastSave = b.kickId; STAT.att++;
         // Khả năng cản: bóng đi thẳng vào người thì dễ; bóng đi sát mép tầm với (đúng góc) và càng căng thì càng khó.
@@ -7264,6 +7400,7 @@ function checkPossession() {
         if (b.y > 1.55) ch *= 0.75;                           // bóng đi góc cao, sát xà
         if (b.dip) ch *= 0.7;                                 // sút phạt vòng qua hàng rào: thủ môn bị che tầm nhìn
         if (b.head) ch *= 0.75;                               // đánh đầu cự ly gần, bóng đổi hướng đột ngột: khó phản xạ
+        if (right) ch = Math.max(ch, 0.8 - edge * 0.25);      // (v21) luân lưu: đoán đúng hướng
         if (Math.random() < ch) { STAT.sv++;
           // Bóng chậm, hoặc đi gần người thì bắt dính; bóng căng đi xa người thì chỉ đẩy ra được
           // Bóng sát xà (tâm bóng ≥ 1,85 m): tay chỉ chạm được mép dưới quả bóng → đẩy qua xà, không bắt dính
@@ -7714,6 +7851,11 @@ function aiKeeper(p, dt) {
       let tz = 0, speed = L.gkSpeed;
       if (gt >= penDive.at) {
         tz = penDive.guess * 1.4; speed = L.gkSpeed * 2.4;
+        // (v21) bóng đã rời chân và bay về phía thủ môn đã chọn: lao tới điểm bóng sẽ cắt vạch vôi (tầm với tới sát cột)
+        if (penDive.guess && !b.owner && b.vx * inward < -2) {
+          const zc = b.z + b.vz * Math.abs((gx - b.x) / b.vx);
+          if (Math.sign(zc) === penDive.guess) { tz = clamp(zc, -GOAL_HW + 0.15, GOAL_HW - 0.15); speed = L.gkSpeed * 2.6; }
+        }
         if (penDive.guess && !penDive.dived) { penDive.dived = true; p.dive = 0.6; p.diveDur = 0.6; p.diveLow = 0; p.diveSide = penDive.guess; }
       }
       moveTo(p, gx + inward * 0.4, tz, speed); return;
@@ -7971,7 +8113,7 @@ function updateHuman(p, dt) {
       p.lungeHit = true;
       const won = Math.random() < 0.78 + p.tkl;
       // Xoạc từ phía sau lưng người giữ bóng rất dễ bị thổi phạt
-      if (Math.random() < foulChance('slide', behindOf(p, o), won)) { p.lunge = 0; commitFoul(p, o); p.fallen = 0.6; return; }
+      if (Math.random() < foulChance('slide', behindOf(p, o), won)) { p.lunge = 0; commitFoul(p, o, { kind: 'slide', behind: behindOf(p, o), won }); p.fallen = 0.6; return; }
       if (won) { giveBall(p); Sound.touch(0.9); } else Sound.touch(0.3);
     } else if (!p.lungeHit && !o && d < 1.0 && ball.y < 0.8) { p.lungeHit = true; giveBall(p); }
     if (p.lunge <= 0 && !p.lungeHit) p.fallen = 0.45;
@@ -8005,7 +8147,7 @@ function standTackle(p) {
     if (gt < o.protectUntil) { showHint(o.isGK ? 'gkHold' : 'setWait', true); return; }
     if (d < 1.35) {
       const won = Math.random() < 0.62 + p.tkl;
-      if (Math.random() < foulChance('stand', behindOf(p, o), won)) { commitFoul(p, o); return; }
+      if (Math.random() < foulChance('stand', behindOf(p, o), won)) { commitFoul(p, o, { kind: 'stand', behind: behindOf(p, o), won }); return; }
       if (won) { giveBall(p); Sound.touch(0.8); } else Sound.touch(0.3);
     }
     else showHint('tooFar');
@@ -8593,7 +8735,7 @@ function humanSetKick(p, kind, w = 0) {
   else { const d = Math.hypot(a.tx - ball.x, a.tz - ball.z); passTo(p, a.tx, a.tz, passArrW(d, 2.5, w), null, { aim: { x: a.tx, z: a.tz } }); p.kickW = w; }
 }
 
-const canAct = () => !(demo || state !== 'play' || paused || !controlled);
+const canAct = () => !(demo || state !== 'play' || paused || !controlled || (pso && ball.owner !== controlled));
 function shootDown() {
   if (!canAct()) return;
   if (isThrowIn(controlled)) return;        // ném biên: không có nút SÚT
@@ -9012,11 +9154,11 @@ function kickoff(kickTeamIdx) {
       p.inWall = false; p.fkWall = false; p.gest = null; p.luLook = false; p.tiHold = false; p.tiT0 = 0; p.tiAt = 0; p.tiPlan = null;
     }
   }
-  const fw = teams[kickTeamIdx].players[4];
+  const fw = pIdx(teams[kickTeamIdx], 4);
   giveBall(fw); fw.protectUntil = gt + 1.6;
   b.x = fw.x + Math.sin(fw.face) * 0.6; b.z = fw.z + Math.cos(fw.face) * 0.6;   // đặt bóng ngay trước chân người giao bóng
   state = 'kickoff'; stateT = 1.3;
-  if (!demo) { controlled = null; setControlled(teams[0].players[4]); Sound.whistle(1); }
+  if (!demo) { controlled = null; setControlled(pIdx(teams[0], 4)); Sound.whistle(1); }
 }
 
 function onGoal(side) {
@@ -9028,6 +9170,7 @@ function onGoal(side) {
   const label = own ? `phản lưới nhà${k ? ` (${k.name})` : ''}` : `${k.name} (số ${k.num})`;
   goals.push({ team: scorer.idx, label, scorer: own ? null : k, at: elapsed });
   state = 'goal'; stateT = 3.2; concedeTeam = 1 - scorer.idx;
+  if (pso) { pso.res[scorer.idx].push(true); pso.n[scorer.idx]++; pso.kicker = null; penDive = null; stateT = 2.0; }   // (v21) luân lưu
   REC.goalT = gt; REC.side = side;
   for (const p of scorer.players) p.celebrate = true;
   crowdJump = 3;
@@ -9036,7 +9179,7 @@ function onGoal(side) {
   if (!demo) {
     Sound.cheer();
     const big = scorer.idx === 0 ? 'VÀOOO!' : 'Ôi, thủng lưới!';
-    const small = own ? `${scorer.name} được hưởng bàn phản lưới` : `${k.name} ghi bàn cho ${scorer.name}!`;
+    const small = pso ? psoLine() : own ? `${scorer.name} được hưởng bàn phản lưới` : `${k.name} ghi bàn cho ${scorer.name}!`;
     showMsg(big, small, 2.6);
   }
 }
@@ -9081,6 +9224,100 @@ function fmtTime(s) { s = Math.max(0, Math.ceil(s)); return `${Math.floor(s / 60
    Phạm lỗi: thổi còi → 'out' (1,3 s) → đá phạt tại chỗ (gần khung thành có hàng rào) hoặc phạt đền.
    ===================================================================== */
 let setp = null, pending = null, penDive = null;
+/* ---------- (v21) ĐÁ LUÂN LƯU ----------
+   Hai đội thay nhau sút phạt đền vào cùng 1 khung thành (bên phải), đội nhà sút trước; mỗi đội 5 lượt, chưa phân thắng
+   bại thì đá đột tử từng cặp lượt. Đã chắc thắng / chắc thua trước khi hết 5 lượt thì dừng sớm (đúng luật).
+   Mỗi lượt kết thúc khi bóng vào lưới, ra ngoài, thủ môn cản / bắt, bóng dừng lại hoặc sau 3,2 giây (không đá bồi).
+   Người sút lần lượt theo PSO_ORDER (Ông Dù sút đầu tiên). Đội bạn sút: con điều khiển thủ môn – kéo cần trái/phải (nhìn từ
+   sau lưng người sút) lúc người sút chạm bóng thì thủ môn bay người sang phía đó, không kéo thì đứng giữa. */
+let pso = null, lastPso = false;
+const PSO_ORDER = F7 ? [4, 2, 6, 3, 5, 1, 0] : [4, 2, 3, 1, 0];
+function psoDots(ti) { const r = pso.res[ti]; let d = r.map((g) => (g ? '●' : '✕')).join(''); for (let i = r.length; i < 5; i++) d += '○'; return d; }
+function psoLine() { return `${teams[0].name} ${teams[0].score} – ${teams[1].score} ${teams[1].name} · ${psoDots(0)} | ${psoDots(1)}`; }
+function psoDecided() {
+  const a = teams[0].score, b = teams[1].score, [na, nb] = pso.n;
+  if (na === nb && na >= 5) return a !== b;
+  if (na <= 5 && nb <= 5) return a + (5 - na) < b || b + (5 - nb) < a;
+  return false;
+}
+function startShootout() {
+  Sound.init();
+  settings.home = $('tenNha').value.trim() || 'Đội Times'; settings.away = $('tenKhach').value.trim() || 'Đội Bạn'; saveSettings();
+  demo = false; paused = false;
+  teams[0].name = settings.home; teams[1].name = settings.away;
+  teams[0].ai = HOME_AI; teams[1].ai = LEVELS[settings.level] || LEVELS.easy;
+  teams[0].style = settings.style; setFormation(teams[0], homeForm()); pickAwayTactic(); applyKits();
+  restoreBench(); refReset();
+  matchStats.shots = [0, 0]; matchStats.poss = [0, 0]; matchStats.fouls = [0, 0]; matchStats.tricks = [0, 0]; matchStats.cards = [[0, 0], [0, 0]];
+  teams[0].score = teams[1].score = 0; goals = []; half = 1; clock = 0; graceT = 0; lastTick = 0; elapsed = 0; crowdJump = 0;
+  resetEnds();
+  for (const k in keys) keys[k] = false;
+  input.charging = false; input.pCharging = null;
+  if (document.activeElement) document.activeElement.blur();
+  assignNames(true);
+  pso = { n: [0, 0], res: [[], []], kicker: null, kicked: false, kickAt: 0, over: false }; lastPso = true;
+  document.body.classList.add('luanLuu');
+  setScreen('play'); resetHints();
+  kickoff(0);                                   // dọn trạng thái như đầu trận (vị trí, bóng, phát lại...)
+  state = 'pso'; stateT = 2.4;
+  showMsg('ĐÁ LUÂN LƯU', 'Mỗi đội 5 lượt · hòa thì đá tiếp từng lượt · đội nhà sút trước', 2.4);
+}
+function psoNextKick() {
+  if (psoDecided()) { psoEnd(); return; }
+  const ti = pso.n[0] === pso.n[1] ? 0 : 1, t = teams[ti];
+  teams[ti].dir = 1; teams[1 - ti].dir = -1;    // cả 2 đội sút vào khung thành bên phải
+  const order = PSO_ORDER.filter((i) => t.players.some((p) => p.idx === i));
+  pending = { type: 'pen', team: ti, x: HL - PEN_SPOT, z: 0, ten: false, takerIdx: order[pso.n[ti] % order.length] };
+  beginSetPiece();
+  pso.kicker = setp ? setp.taker : null; pso.kicked = false; pso.aiAt = null;
+  if (ti === 1) {
+    setControlled(teams[0].players[0]);          // đội bạn sút: con điều khiển thủ môn nhà
+    showMsg(`${t.name} SÚT – lượt ${pso.n[1] + 1}`, 'Kéo cần TRÁI hoặc PHẢI để thủ môn bay người · không kéo: đứng giữa', 2.4);
+  } else showMsg(`${t.name} SÚT – lượt ${pso.n[0] + 1}`, `${pso.kicker ? pso.kicker.name : ''} · kéo cần chọn góc, giữ SÚT rồi thả`, 2.0);
+}
+function psoResult(goal, how) {
+  const k = pso.kicker; if (!k) return;
+  pso.kicker = null; penDive = null; input.charging = false;
+  if (!goal) {
+    pso.res[k.team].push(false); pso.n[k.team]++;
+    state = 'pso'; stateT = 1.8;
+    Sound.whistle(1);
+    showMsg(how === 'save' ? 'CẢN PHÁ!' : 'TRƯỢT RỒI!', psoLine(), 1.8);
+  }
+}
+function psoTick() {
+  const k = pso.kicker; if (!k || state !== 'play') return;
+  if (!pso.kicked) { if (ball.owner !== k) { pso.kicked = true; pso.kickAt = gt; } return; }
+  const lk = ball.lastKicker, gkTouch = lk && lk.isGK && lk.team !== k.team, t = gt - pso.kickAt;
+  if (ball.owner) psoResult(false, ball.owner.isGK && ball.owner.team !== k.team ? 'save' : gkTouch ? 'save' : 'miss');
+  else if (t > 3.2 || (t > 1.0 && Math.hypot(ball.vx, ball.vz) < 0.6)) psoResult(false, gkTouch ? 'save' : 'miss');
+}
+function psoAI(dt) {
+  const owner = ball.owner;
+  for (const p of allPlayers) {
+    if (p === controlled && !p.isGK) continue;
+    const defGk = p.isGK && p.t.dir < 0;          // thủ môn đội đang bắt luân lưu
+    if (defGk) { aiKeeper(p, dt); continue; }
+    // máy sút: chờ 1,8 s cho con kịp chọn hướng bay người (máy tự đá sau 2,5 s nếu chưa sút – forceSetPiece)
+    if (owner === p && p.setUntil > gt) { p.dvx = p.dvz = 0; if (pso.aiAt == null) pso.aiAt = gt + 1.8; if (gt >= pso.aiAt) { pso.aiAt = null; aiSetKick(p); } continue; }
+    moveTo(p, p.spX ?? p.x, p.spZ ?? p.z, 3);
+  }
+}
+// Chỗ đứng chờ lượt: các bạn đứng trong vòng tròn giữa sân (đội nhà bên trái, đội bạn bên phải), thủ môn đội đang sút đứng cạnh
+function psoSpot(p) {
+  if (p.isGK) return [0.4 * (p.team ? 1 : -1), -(F7 ? 5.5 : 3.6)];
+  const fl = p.t.players.filter((q) => !q.isGK), k = fl.indexOf(p);
+  return [p.team ? 1.3 : -1.3, (k - (fl.length - 1) / 2) * 1.25];
+}
+function psoEnd() {
+  pso.over = true; state = 'end'; stateT = 0;
+  const a = teams[0].score, b = teams[1].score, w = a > b ? 0 : 1;
+  Sound.whistle(3, true);
+  for (const p of allPlayers) p.celebrate = p.team === w;
+  if (w === 0) crowdJump = 4;
+  showMsg(`${teams[w].name} THẮNG LUÂN LƯU!`, psoLine(), 2.2);
+  setTimeout(showEnd, 2200);
+}
 const SP_LABEL = { in: TI ? 'NÉM BIÊN' : 'ĐÁ BIÊN', corner: 'PHẠT GÓC', gk: 'THỦ MÔN PHÁT BÓNG', gkh: 'THỦ MÔN CẦM BÓNG', fk: 'ĐÁ PHẠT', pen: 'PHẠT ĐỀN' };
 
 /* ---------- PHẠM LỖI ----------
@@ -9106,10 +9343,11 @@ function inPenArea(x, z, def) {
   if (x * gx < 0 || ax > 6) return false;
   return az <= GOAL_HW || Math.hypot(ax, az - GOAL_HW) <= 6;
 }
-// Thổi phạt: off phạm lỗi với vic
-function commitFoul(off, vic) {
+// Thổi phạt: off phạm lỗi với vic. (v21) info = { kind: 'slide' | 'stand' | 'ai', behind, won } để quyết định thẻ
+function commitFoul(off, vic, info) {
   if (state !== 'play') return;
   const b = ball, team = vic.team;
+  if (info) info.hadBall = b.owner === vic;
   const pen = inPenArea(vic.x, vic.z, off.team);
   matchStats.fouls[off.team]++;
   const offT = teams[off.team]; offT.fouls = (offT.fouls || 0) + 1;    // lỗi tích lũy trong hiệp
@@ -9126,10 +9364,25 @@ function commitFoul(off, vic) {
     if (!(HL - px * dirA < 10)) { px = dirA * (HL - 10); pz = 0; }
   }
   pending = { type, x: px, z: pz, team, ten };
+  // (v21) thẻ phạt: trọng tài chạy tới giơ thẻ; thẻ đỏ (hoặc thẻ vàng thứ 2) → ra ngoài 1 phút khi bóng được đá lại
+  let card = cardFor(off, vic, info);
+  if (card === 'yellow') { off.yellow = (off.yellow || 0) + 1; if (off.yellow >= 2) card = 'red2'; }
+  if (card) {
+    const red = card !== 'yellow';
+    if (matchStats.cards) matchStats.cards[off.team][red ? 1 : 0]++;
+    REF.card = red ? 'red' : 'yellow'; REF.cardT = gt; REF.cardP = off;
+    if (REF.mesh) REF.mesh.material.color.set(red ? '#e01b1b' : '#ffd400');
+    if (red) sendOffQ.push(off);
+    stateT = 2.6;                                           // chờ trọng tài rút thẻ xong mới đá phạt
+  }
   if (!demo) {
     Sound.whistle(2);
     const warn5 = !F7 && offT.fouls === 5;
     const note = ten ? ` · lỗi tích lũy thứ ${offT.fouls}` : warn5 ? ` · ${offT.name} đã 5 lỗi: lỗi tiếp theo bị đá phạt 10 m!` : '';
+    if (card) {
+      const red = card !== 'yellow', what = pen ? 'phạt đền' : ten ? 'đá phạt 10 m' : 'đá phạt';
+      showMsg(red ? 'THẺ ĐỎ!' : 'THẺ VÀNG!', `${off.name} (số ${off.num})${card === 'red2' ? ' – thẻ vàng thứ 2' : ''} · ${what}${red ? ' · ra ngoài 1 phút' : ''}`, 2.6);
+    } else
     showMsg(pen ? 'PHẠT ĐỀN!' : ten ? 'ĐÁ PHẠT 10 M!' : 'PHẠM LỖI!', `${off.name} phạm lỗi với ${vic.name}${note}`, ten || warn5 ? 2.2 : 1.4);
     if (off === controlled) showHint('foulBy', true); else if (team === 0) showHint('fouled', true);
   }
@@ -9173,16 +9426,22 @@ function onSetKick(p, type) {
   for (const q of allPlayers) if (q.inWall) { q.jumpY = 0.42; q.inWall = false; }
   if (type === 'pen') {
     const gk = teams[1 - p.team].players[0], r = Math.random();
-    penDive = { gk, guess: r < 0.4 ? -1 : r < 0.8 ? 1 : 0, at: gt + 0.08, end: gt + 2.2, dived: false };
+    let guess = r < 0.4 ? -1 : r < 0.8 ? 1 : 0;
+    // (v21) đá luân lưu, đội bạn sút: con chọn hướng. Máy quay ở sau lưng người sút nhìn theo hướng u tới khung thành →
+    // "phải màn hình" là hướng (−u.z, u.x) trên mặt sân: thành phần z = u.x → kéo phải = bay về phía z cùng dấu u.x
+    if (pso && !demo && gk.team === 0) { const sx = input.joy ? input.jx : (input.kx || 0); guess = Math.abs(sx) > 0.3 ? Math.sign(sx) * Math.sign(kc ? kc.ux : 1) : 0; }
+    penDive = { gk, guess, at: gt + 0.08, end: gt + 2.2, dived: false };
   }
 }
 
 function beginSetPiece() {
+  // (v21) người vừa nhận thẻ đỏ rời sân trước khi bóng được đá lại
+  if (sendOffQ.length) { for (const p of sendOffQ) sendOff(p); sendOffQ = []; }
   const sp = pending, t = teams[sp.team], b = ball, dir = t.dir;
   pending = null;
   let taker = t.players[0];
   // Phạt đền: tiền đạo (số 10) đá từ chấm 6 m; đá phạt 10 m (lỗi tích lũy) giữ nguyên điểm đặt bóng đã tính khi thổi phạt
-  if (sp.type === 'pen') { taker = t.players[4]; if (!sp.ten) { sp.x = dir * (HL - PEN_SPOT); sp.z = 0; } }
+  if (sp.type === 'pen') { taker = pIdx(t, sp.takerIdx ?? 4); if (!sp.ten) { sp.x = dir * (HL - PEN_SPOT); sp.z = 0; } }
   else if (sp.type !== 'gk') {
     let bd = 1e9;
     for (const p of t.players) { if (p.isGK) continue; const d = Math.hypot(p.x - sp.x, p.z - sp.z); if (d < bd) { bd = d; taker = p; } }
@@ -9226,6 +9485,7 @@ function updateSetPiece(dt) {
   const dir = teams[s.team].dir, gx = dir * HL;
   for (const p of allPlayers) {
     if (p === s.taker) { moveTo(p, s.sx, s.sz, 6.5); p.spX = s.sx; p.spZ = s.sz; continue; }
+    if (pso && !(p.isGK && p.team !== s.team)) { const [qx, qz] = psoSpot(p); moveTo(p, qx, qz, 5.5); p.spX = qx; p.spZ = qz; continue; }
     let fx, fz, spd = 5;
     if (p.isGK) {
       fx = -p.t.dir * (HL - 0.8); fz = 0;
@@ -9236,7 +9496,7 @@ function updateSetPiece(dt) {
       }
       moveTo(p, fx, fz, 4.5); p.spX = fx; p.spZ = fz; continue;
     }
-    const i = p.t.players.indexOf(p);
+    const i = p.idx;
     [fx, fz] = formationPos(p);
     if (s.type === 'corner') {
       const side = Math.sign(s.x);
@@ -9259,7 +9519,7 @@ function updateSetPiece(dt) {
       const w = s.wall[s.wallPlayers.indexOf(p)]; fx = w.x; fz = w.z; spd = 6;
     } else if (s.type === 'fk' && s.wall && p.team === s.team) {
       // Đá phạt có hàng rào: đồng đội người đá đứng ra 2 bên, KHÔNG đứng chắn đường sút
-      const side = Math.sign(s.z) || 1, fwTaker = s.taker === p.t.players[4];
+      const side = Math.sign(s.z) || 1, fwTaker = s.taker === pIdx(p.t, 4);
       if (i === 4 || (i === 3 && fwTaker)) { fx = gx - dir * 3.5; fz = -side * 3.4; }            // cột xa: chờ bóng bật ra
       else if (i === 2 || i === 3) { fx = s.x + dir * 1.2; fz = clamp(s.z + (i === 2 ? -1 : 1) * 3.6, -HW + 1, HW - 1); }   // cạnh bóng: nhận chuyền ngắn
     }
@@ -9289,7 +9549,7 @@ function updateSetPiece(dt) {
     let face = Math.atan2((s.x - s.sx) || tk.t.dir, s.z - s.sz);
     if (s.type === 'pen') face = Math.atan2(gx - s.x, -s.z);
     else if (s.type !== 'gk') {
-      const fw = tk.t.players[4] !== tk ? tk.t.players[4] : tk.t.players[3];
+      const f4 = pIdx(tk.t, 4), fw = f4 !== tk ? f4 : pIdx(tk.t, 3);
       const r = s.type === 'corner' ? fw : (pickPassTarget(tk, false) || nearestTeammate(tk));
       if (r) { face = Math.atan2(r.x - s.x, r.z - s.z); tk.spAuto = human ? r : null; }
     } else if (human) {                              // (v19c) con phát bóng: mũi tên tự bám bạn trống nhất
@@ -9304,7 +9564,7 @@ function updateSetPiece(dt) {
 function aiSetKick(p) {
   const t = p.t, L = t.ai;
   if (isThrowIn(p)) { aiThrowIn(p); return; }
-  if (p.setType === 'corner') { const fw = t.players[4] !== p ? t.players[4] : t.players[3]; lobTo(p, t.dir * (HL - (F7 ? 4.5 : 3.2)), rand(-1, 1) * (GOAL_HW - 0.2), fw); return; }
+  if (p.setType === 'corner') { const f4 = pIdx(t, 4), fw = f4 !== p ? f4 : pIdx(t, 3); lobTo(p, t.dir * (HL - (F7 ? 4.5 : 3.2)), rand(-1, 1) * (GOAL_HW - 0.2), fw); return; }
   if (p.setType === 'pen') {
     // Phạt đền: chọn ngẫu nhiên 1 góc, sai số theo mức độ
     const side = Math.random() < 0.5 ? -1 : 1, weak = Math.random() < 0.15 * (L.aimErr || 1);   // đôi khi sút non vào giữa
@@ -9481,7 +9741,7 @@ function introStep(dt) {
       const k = clamp(Math.round(luF(introT - T_FLY)), 0, luOrder.length - 1);
       if (k !== luFocus) {
         luFocus = k;
-        const p = luOrder[k], star = p === teams[0].players[4];
+        const p = luOrder[k], star = p === pIdx(teams[0], 4);
         showCard(p);
         p.gest = { kind: LU_GEST[k], t0: gt, t1: gt + (star ? 2.4 : p.team === 0 ? 1.5 : 1.1) };
         if (k === 0 || star) Sound.cheer();            // các bạn reo khi bắt đầu giới thiệu và khi tới bạn số 10
@@ -9535,7 +9795,9 @@ function step(dt) {
   if (state === 'intro') { introStep(dt); if (state === 'intro') movePlayers(dt); return; }
   // ĐỒNG HỒ CHẠY LIÊN TỤC, kể cả lúc đá biên, phạt góc, giao bóng, ăn mừng → trận "5 phút" dài đúng 5 phút thật.
   // Vì sao đổi: trước đây đồng hồ dừng mỗi lần bóng chết, trận dài thêm 40–70 giây và đồng hồ trông như đứng yên.
-  const running = !demo && (state === 'play' || state === 'out' || state === 'setpiece' || state === 'kickoff' || state === 'goal');
+  const running = !demo && !pso && (state === 'play' || state === 'out' || state === 'setpiece' || state === 'kickoff' || state === 'goal');
+  // (v21) cầu thủ bị thẻ đỏ: đếm ngược 1 phút theo đồng hồ trận rồi vào lại sân
+  if (running && benched.length) for (const p of benched.slice()) { p.offT -= dt; if (p.offT <= 0) returnPlayer(p); }
   if (running) {
     clock = Math.max(0, clock - dt); elapsed += dt;
     const sec = Math.ceil(clock);
@@ -9546,16 +9808,18 @@ function step(dt) {
   if (state === 'play') {
     forceSetPiece();
     throwInTick(); gkThrowTick();
-    if (!demo && controlled) updateHuman(controlled, dt);
-    updateTeamAI(teams[0], dt);
-    updateTeamAI(teams[1], dt);
+    if (!demo && controlled && !(pso && controlled.isGK)) updateHuman(controlled, dt);
+    if (pso) psoAI(dt);
+    else { updateTeamAI(teams[0], dt); updateTeamAI(teams[1], dt); }
   } else if (state === 'setpiece') updateSetPiece(dt);
   else if (state === 'goal') celebrateMove();
   else for (const p of allPlayers) { p.dvx = 0; p.dvz = 0; }
   movePlayers(dt);
+  refStep(dt);
   updateBall(dt);
-  if (state === 'play') { checkPossession(); if (!demo) autoSwitch(); }
-  if (!demo && (state === 'play' || state === 'goal')) recordFrame();
+  if (state === 'play') { checkPossession(); if (!demo && !pso) autoSwitch(); }
+  if (pso) { psoTick(); if (state === 'pso' && stateT <= 0) psoNextKick(); }   // (stateT của 'pso' đã đếm lùi ở trên)
+  if (!demo && !pso && (state === 'play' || state === 'goal')) recordFrame();
   if (!demo) updateHints(dt);
   if (running && clock <= 0 && state !== 'goal' && !penPending()) {   // đã thổi phạt đền thì phải đá xong mới hết giờ
     // Hết giờ: cú sút đang bay về phía khung thành thì chờ tối đa 1,5 s cho cú sút đó có kết quả rồi mới thổi còi
@@ -9564,6 +9828,7 @@ function step(dt) {
   }
   else if (state === 'kickoff' && stateT <= 0) state = 'play';
   else if (state === 'out' && stateT <= 0) beginSetPiece();
+  else if (state === 'goal' && stateT <= 0 && pso) { state = 'pso'; stateT = 0.2; for (const p of allPlayers) p.celebrate = false; }
   else if (state === 'goal' && stateT <= 0) {
     if (!demo && settings.replay !== false && startReplay()) { /* đang phát lại bàn thắng; xong thì giao bóng */ }
     else if (!demo && clock <= 0) endPeriod(); else kickoff(concedeTeam);
@@ -10006,6 +10271,8 @@ function netWave(P, dt, f) {
 function updateVisuals(dt, time) {
   updateTrail(dt); updateConfetti(dt);
   for (const p of allPlayers) updateKid(p, dt, time);
+  for (const p of benched) updateKid(p, dt, time);     // (v21) đứng ở khu kỹ thuật
+  refVisual(dt, time);
   // Bóng: vị trí + lăn (xoay quanh trục vuông góc hướng chạy, góc = quãng đường / bán kính)
   const b = ball, go = b.owner;
   if (go && go.isGK && b.hands && go.kid) {
@@ -10212,6 +10479,7 @@ const KEY_HELP = {
   ball: '⬅⬆➡⬇ chạy • giữ SPACE sút • K chuyền • J bổng • I chọc khe • U lừa bóng • SHIFT nhanh',
   set: '⬅⬆➡⬇ xoay mũi tên • K chuyền • J bổng • I chọc khe • giữ SPACE sút',
   thr: '⬅⬆➡⬇ xoay mũi tên • giữ K ném tới chân • J ném bổng • I ném vào khoảng trống (giữ lâu = xa)',
+  psoGk: '⬅➡ chọn hướng thủ môn bay người (giữ tới lúc người sút chạm bóng) • không bấm: đứng giữa',
   pen: '⬅➡ chọn góc • giữ SPACE rồi thả để sút phạt đền',
   head: 'Bóng đang bay tới: SPACE đánh đầu • K đánh đầu chuyền',
   cross: '⬅⬆➡⬇ chạy, chọn chỗ tạt (vòng cam) • J tạt bóng • giữ SPACE sút • K chuyền • I chọc khe • U lừa bóng',
@@ -10233,13 +10501,15 @@ function setBanner(type, left) {
 }
 function updateHUD() {
   if (currentScreen !== 'play' && currentScreen !== 'pause') return;
-  const s = `${teams[0].name}|${teams[1].name}|${teams[0].score}|${teams[1].score}|${fmtTime(clock)}|${half}|${teams[0].fouls}|${teams[1].fouls}`;
+  const s = `${teams[0].name}|${teams[1].name}|${teams[0].score}|${teams[1].score}|${fmtTime(clock)}|${half}|${teams[0].fouls}|${teams[1].fouls}|${pso ? pso.n.join('/') : ''}`;
   if (s !== lastHud) {
     lastHud = s;
     $('ten0').textContent = teams[0].name; $('ten1').textContent = teams[1].name;
     $('tiSo').textContent = `${teams[0].score} - ${teams[1].score}`;
-    $('dongHo').textContent = fmtTime(clock);
-    $('soHiep').textContent = half;
+    $('dongHo').textContent = pso ? 'PEN' : fmtTime(clock);
+    $('soHiep').textContent = pso ? Math.min(pso.n[0], pso.n[1]) + 1 : half;
+    $('hiep').querySelector('.dai').textContent = pso ? 'Lượt ' : 'Hiệp ';
+    $('hiep').querySelector('.ngan').textContent = pso ? 'L' : 'H';
     for (const i of [0, 1]) {
       const f = F7 ? 0 : teams[i].fouls || 0, el = $('loi' + i);   // sân 7 người không tính lỗi tích lũy
       el.innerHTML = f ? `${f}<span class="chu"> lỗi</span>` : ''; el.classList.toggle('nguy', f >= 5);   // màn hẹp chỉ hiện con số
@@ -10256,7 +10526,8 @@ function updateHUD() {
   // (v19c) thêm: gkh… – thủ môn đội nhà cầm bóng trên tay (P: được PHÁT BÓNG, D: được ĐẶT BÓNG xuống rê);
   //  cross – có bóng ở cánh 1/3 sân đối phương: nút BỔNG thành TẠT
   const gkH = hasBall && c.isGK && ball.hands;
-  const mode = gkH ? 'gkh' + (gkCanPunt(c) ? 'P' : '') + (gkCanDrop(c) ? 'D' : '')
+  const psoGk = !!(pso && c && c.isGK && !hasBall);      // (v21) luân lưu, đội bạn sút: con chỉ kéo cần chọn hướng bay người
+  const mode = psoGk ? 'psoGk' : gkH ? 'gkh' + (gkCanPunt(c) ? 'P' : '') + (gkCanDrop(c) ? 'D' : '')
     : sh && c.setType === 'pen' ? 'pen' : sh && TI && c.setType === 'in' ? 'thr' : sh ? 'set' : hasBall ? (crossZone(c) ? 'cross' : 'ball') : inc ? (ball.y > 0.45 ? 'head' : 'one') : 'def';
   if (mode !== lastMode) {
     lastMode = mode;
@@ -10275,7 +10546,8 @@ function updateHUD() {
     $('nutKhe').classList.toggle('an', !bm && mode !== 'set' && mode !== 'thr');
     $('nutLua').classList.toggle('an', !bm && mode !== 'one' && !gkD);   // LỪA: có bóng / đường chuyền đang lăn tới; thủ môn: ĐẶT BÓNG
     $('nutLua').innerHTML = mode === 'one' ? '<div>LỪA<small>giả vờ đỡ</small></div>' : gkD ? '<div>ĐẶT BÓNG<small>rê bằng chân</small></div>' : '<div>LỪA<small>qua người</small></div>';
-    $('nutTangToc').classList.toggle('an', mode === 'pen' || mode === 'set' || mode === 'thr' || gk);   // đang đá bóng chết / thủ môn cầm bóng: không cần nút chạy nhanh
+    if (mode === 'psoGk') for (const id of ['nutSut', 'nutChuyen', 'nutXoac', 'nutKhe', 'nutLua']) $(id).classList.add('an');
+    $('nutTangToc').classList.toggle('an', mode === 'psoGk' || mode === 'pen' || mode === 'set' || mode === 'thr' || gk);   // đang đá bóng chết / thủ môn cầm bóng: không cần nút chạy nhanh
     if (mode === 'thr') showHint('throwIn', true);
     $('goiYPhim').textContent = gk ? gkKeyHelp(gkP, gkD) : KEY_HELP[mode];
   }
@@ -10313,7 +10585,8 @@ function startMatch() {
   teams[0].ai = HOME_AI; teams[1].ai = LEVELS[settings.level] || LEVELS.easy;
   teams[0].style = settings.style; setFormation(teams[0], homeForm()); pickAwayTactic();
   applyKits();
-  matchStats.shots = [0, 0]; matchStats.poss = [0, 0]; matchStats.fouls = [0, 0]; matchStats.tricks = [0, 0];
+  matchStats.shots = [0, 0]; matchStats.poss = [0, 0]; matchStats.fouls = [0, 0]; matchStats.tricks = [0, 0]; matchStats.cards = [[0, 0], [0, 0]];
+  pso = null; lastPso = false; document.body.classList.remove('luanLuu'); restoreBench(); refReset();
   teams[0].score = teams[1].score = 0; goals = []; half = 1; clock = halfLen(); graceT = 0; lastTick = 0; elapsed = 0; crowdJump = 0;
   resetEnds();
   for (const k in keys) keys[k] = false;
@@ -10327,6 +10600,7 @@ function startMatch() {
 
 function goMenu() {
   demo = true; paused = false; controlled = null; input.charging = false; input.pCharging = null;
+  pso = null; document.body.classList.remove('luanLuu'); restoreBench(); refReset();
   teams[0].ai = HOME_AI; teams[1].ai = LEVELS.normal;
   teams[0].style = settings.style; setFormation(teams[0], homeForm()); pickAwayTactic();   // trận nền cũng đá theo lựa chọn
   teams[0].score = teams[1].score = 0; resetEnds();
@@ -10345,6 +10619,15 @@ function togglePause(force) {
 function showEnd() {
   if (demo) return;
   const a = teams[0].score, b = teams[1].score;
+  if (pso) {                                     // (v21) kết quả đá luân lưu
+    $('kqTieuDe').textContent = a > b ? `🏆 ${teams[0].name} THẮNG LUÂN LƯU!` : `${teams[1].name} thắng luân lưu`;
+    $('kqPhu').textContent = a > b ? 'Sút chuẩn, bắt hay! Đá lại nhé!' : 'Không sao, lượt sau mình sẽ thắng!';
+    $('thongBao').classList.remove('hien');
+    $('kqTiSo').innerHTML = `<span class="tn">${esc(teams[0].name)}</span> ${a} - ${b} <span class="tn">${esc(teams[1].name)}</span>`;
+    $('dsBan').innerHTML = `<li>${esc(teams[0].name)}: ${psoDots(0)}</li><li>${esc(teams[1].name)}: ${psoDots(1)}</li>`;
+    $('kqVua').innerHTML = '● vào lưới &nbsp; ✕ trượt / bị cản';
+    setScreen('end'); return;
+  }
   $('kqTieuDe').textContent = a > b ? `🏆 ${teams[0].name} THẮNG!` : a < b ? `${teams[1].name} thắng` : 'HÒA RỒI!';
   $('kqPhu').textContent = a > b ? 'Giỏi quá! Đá thêm trận nữa nhé!' : a < b ? 'Không sao, trận sau mình sẽ thắng!' : 'Hai đội ngang tài ngang sức!';
   $('thongBao').classList.remove('hien');
@@ -10358,6 +10641,9 @@ function showEnd() {
   $('kqVua').innerHTML = best ? `⭐ Vua phá lưới: <b>${esc(best.name)}</b> (${esc(best.t.name)}) – ${bn} bàn` : '';
   const ps = matchStats.poss[0] + matchStats.poss[1] || 1, p0 = Math.round(matchStats.poss[0] / ps * 100);
   $('kqVua').innerHTML += `<div style="margin-top:6px;color:#4a6178;font-weight:600">Cú sút: ${matchStats.shots[0]} – ${matchStats.shots[1]} &nbsp;•&nbsp; Kiểm soát bóng: ${p0}% – ${100 - p0}%${settings.fouls !== false ? ` &nbsp;•&nbsp; Phạm lỗi: ${matchStats.fouls[0]} – ${matchStats.fouls[1]}` : ''} &nbsp;•&nbsp; Lừa qua người: ${matchStats.tricks[0]}</div>`;
+  const cd = matchStats.cards;
+  if (cd && cd[0][0] + cd[0][1] + cd[1][0] + cd[1][1] > 0)
+    $('kqVua').innerHTML += `<div style="margin-top:4px;color:#4a6178;font-weight:600">🟨 Thẻ vàng: ${cd[0][0]} – ${cd[1][0]} &nbsp;•&nbsp; 🟥 Thẻ đỏ: ${cd[0][1]} – ${cd[1][1]}</div>`;
   setScreen('end');
 }
 
@@ -10443,7 +10729,11 @@ function buildMenu() {
   $('hdSau').onclick = guideNext; $('hdTruoc').onclick = guidePrev; $('hdDong').onclick = closeGuide;
   $('nutTiepTuc').onclick = () => togglePause(false);
   $('nutThoat').onclick = goMenu;
-  $('nutDaLai').onclick = startMatch;
+  $('nutDaLai').onclick = () => (lastPso ? startShootout() : startMatch());
+  $('nutLuanLuu').onclick = () => {
+    if (isTouch && fsApi && !fsActive()) toggleFullscreen(true);
+    startShootout();
+  };
   $('nutVeMenu').onclick = goMenu;
   $('nutDung').onclick = () => togglePause();
   $('nutLoa').onclick = () => { Sound.init(); Sound.setMuted(!Sound.isMuted()); $('nutLoa').textContent = Sound.isMuted() ? '🔇' : '🔊'; };
@@ -10494,7 +10784,7 @@ function refreshTacticUI() {
 }
 // Tên vị trí ở màn hình đặt tên đổi theo đội hình
 function refreshRoleLabels() {
-  document.querySelectorAll('#dsTen .tenViTri').forEach((el, i) => { const p = teams[0].players[i]; if (p) el.textContent = p.role.label; });
+  document.querySelectorAll('#dsTen .tenViTri').forEach((el, i) => { const p = teams[0].players.find((q) => q.idx === i) || benched.find((q) => q.team === 0 && q.idx === i); if (p) el.textContent = p.role.label; });
 }
 
 function onResize() {
@@ -10692,7 +10982,7 @@ ${svgKid(214, 152, '#1e63d6', { ball: 18 })}
 
 const SET_TITLE = TI ? 'Ném biên, đá phạt, phạt đền' : 'Đá biên, đá phạt, phạt đền';
 function guidePages() {
-  const fw10 = teams[0].players[4];
+  const fw10 = pIdx(teams[0], 4);
   const touchPage = {
     title: 'Chơi trên iPad, điện thoại',
     html: `${SVG_DIEN_THOAI}<table>
@@ -10858,7 +11148,7 @@ function hintText(key) {
   }
 }
 function showHint(key, force) {
-  if (!settings.hints || demo || hints.shown.has(key)) return false;
+  if (!settings.hints || demo || pso || hints.shown.has(key)) return false;
   if (!force && gt - hints.lastAt < 6) return false;      // cách nhau ít nhất 6 giây, không hiện dồn dập
   hints.shown.add(key); hints.lastAt = gt; hints.until = gt + 5;
   $('goiYChu').innerHTML = hintText(key);
@@ -10913,7 +11203,7 @@ function updateNameLabel() {
    - Pháo giấy + chớp sáng + rung màn hình khi có bàn thắng.
    Dùng "bể" đối tượng tạo sẵn (không tạo mới mỗi khung hình) để không giật trên iPad.
    ===================================================================== */
-const matchStats = { shots: [0, 0], poss: [0, 0], fouls: [0, 0], tricks: [0, 0] };
+const matchStats = { shots: [0, 0], poss: [0, 0], fouls: [0, 0], tricks: [0, 0], cards: [[0, 0], [0, 0]] };   // cards: [vàng, đỏ]
 let shake = 0;
 const TRAIL_N = 22, trail = [];
 {
@@ -11009,6 +11299,8 @@ requestAnimationFrame(frame);
 
 // Móc gỡ lỗi (dùng khi kiểm thử tự động)
 window.__game = {
+  get pso() { return pso; }, get REF() { return REF; }, get benched() { return benched; }, get sendOffQ() { return sendOffQ; },
+  startShootout, sendOff, returnPlayer, cardFor, commitFoul, pIdx, get canAct() { return canAct(); },
   footProbe(name, N = 48) {
     // (v20) kiểm thử: đặt tư thế clip lên nhân vật số 2 đội nhà ở N pha đều nhau, trả độ cao (m, so với gốc nhân vật)
     // và vị trí trước–sau của 2 bàn chân; trả lại tư thế cũ ở khung hình kế tiếp (updateKid dựng lại)
