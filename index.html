@@ -8815,24 +8815,31 @@ addEventListener('blur', () => { for (const k in keys) keys[k] = false; input.ch
     knob.style.transform = `translate(${dx}px,${dy}px)`;
     input.jx = dx / JR; input.jz = dy / JR; input.joy = true;
   };
+  // (v19e) Nhả cần về giữa – dùng chung cho mọi cách kết thúc một lần chạm
+  const release = () => {
+    if (id !== null) { try { zone.releasePointerCapture(id); } catch (err) { /* bỏ qua */ } }
+    id = null; input.joy = false; input.jx = input.jz = 0;
+    base.classList.remove('hien'); knob.style.transform = 'translate(0,0)';
+  };
   zone.addEventListener('pointerdown', (e) => {
-    if (id !== null) return;
+    // (v19e) Ngón mới chạm vào vùng cần luôn được nhận thay ngón cũ. Trước đây nếu trình duyệt bỏ sót sự kiện nhấc
+    // ngón cũ (kéo cần ra khỏi trang trên iPad) thì id bị kẹt, mọi lần chạm sau bị bỏ qua → cần "dính" ở mép
+    if (id !== null && e.pointerId !== id) release();
     id = e.pointerId; try { zone.setPointerCapture(id); } catch (err) { /* bỏ qua */ }
     cx = e.clientX; cy = e.clientY;
     base.style.left = (cx - 60) + 'px'; base.style.top = (cy - 60) + 'px'; base.style.bottom = 'auto';
     base.classList.add('hien'); upd(e); e.preventDefault();
   });
   zone.addEventListener('pointermove', (e) => { if (e.pointerId === id) upd(e); });
-  const end = (e) => {
-    if (e.pointerId !== id) return;
-    id = null; input.joy = false; input.jx = input.jz = 0;
-    base.classList.remove('hien'); knob.style.transform = 'translate(0,0)';
-  };
+  const end = (e) => { if (e.pointerId === id) release(); };
   zone.addEventListener('pointerup', end); zone.addEventListener('pointercancel', end);
+  zone.addEventListener('lostpointercapture', end);       // (v19e) trình duyệt / hệ điều hành giành mất ngón đang giữ cần
+  addEventListener('pointerup', end, true); addEventListener('pointercancel', end, true);   // (v19e) nhấc ngón ngoài vùng cần
+  const held = new Map();                                 // (v19e) nút đang giữ: hàm thả → phần tử nút
   const bind = (el, down, up) => {
-    el.addEventListener('pointerdown', (e) => { e.preventDefault(); try { el.setPointerCapture(e.pointerId); } catch (err) { /* bỏ qua */ } el.classList.add('nhan'); Sound.init(); down(); });
-    const u = () => { el.classList.remove('nhan'); if (up) up(); };
-    el.addEventListener('pointerup', u); el.addEventListener('pointercancel', u);
+    const u = () => { if (!held.delete(u)) return; el.classList.remove('nhan'); if (up) up(); };
+    el.addEventListener('pointerdown', (e) => { e.preventDefault(); try { el.setPointerCapture(e.pointerId); } catch (err) { /* bỏ qua */ } el.classList.add('nhan'); held.set(u, el); Sound.init(); down(); });
+    el.addEventListener('pointerup', u); el.addEventListener('pointercancel', u); el.addEventListener('lostpointercapture', u);
   };
   bind($('nutSut'), shootDown, shootUp);
   bind($('nutChuyen'), passDown, passUp);
@@ -8840,6 +8847,20 @@ addEventListener('blur', () => { for (const k in keys) keys[k] = false; input.ch
   bind($('nutKhe'), throughDown, throughUp);
   bind($('nutLua'), trickDown);
   bind($('nutTangToc'), () => { input.touchSprint = true; }, () => { input.touchSprint = false; });
+  // (v19e) Lưới an toàn: không còn ngón nào trên màn hình → nhả cần và nhả mọi nút còn giữ (coi như ngón đã nhấc).
+  // Sự kiện chạm (touch) được gửi sau sự kiện con trỏ (pointer) của cùng lần nhấc ngón, nên khi mọi thứ bình thường
+  // cần và nút đã tự nhả trước, đoạn này không làm gì thêm
+  const allUp = (e) => { if (e.touches && e.touches.length) return; release(); for (const u of [...held.keys()]) u(); };
+  document.addEventListener('touchend', allUp, { capture: true, passive: true });
+  document.addEventListener('touchcancel', allUp, { capture: true, passive: true });
+  // (v19e) Chuyển sang ứng dụng khác / tắt màn hình: nhả cần, bỏ nút đang giữ nhưng KHÔNG thực hiện cú đá
+  const drop = () => {
+    release();
+    for (const el of held.values()) el.classList.remove('nhan');
+    held.clear(); input.charging = false; input.pCharging = null; input.touchSprint = false;
+  };
+  addEventListener('blur', drop);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) drop(); });
   document.addEventListener('contextmenu', (e) => e.preventDefault());
 })();
 
@@ -10908,6 +10929,7 @@ requestAnimationFrame(frame);
 
 // Móc gỡ lỗi (dùng khi kiểm thử tự động)
 window.__game = {
+  get joyActive() { return !!input.joy; },
   get intro() { return { t: introT, focus: luFocus, order: luOrder.map((p) => `${p.team}:${p.num}`), len: INTRO_LEN, tFly: T_FLY, pan: LU_PAN, xs: luXs.slice() }; },
   updateCamera, trickDown, trickPick, trickThreat, trickWindow, rebuildPlayerKid, makeKid, get info() { return { calls: renderer.info.render.calls, tris: renderer.info.render.triangles, geos: renderer.info.memory.geometries, tex: renderer.info.memory.textures }; }, get state() { return state; }, teams, ball, allPlayers, get controlled() { return controlled; }, get clock() { return clock; }, get half() { return half; }, step, startMatch, goMenu, kickoff, settings, lobDown: (hold) => { lobDown(); if (!hold) lobUp(); }, throughDown: (hold) => { throughDown(); if (!hold) throughUp(); }, lobUp, throughUp, get setp() { return setp; }, get pending() { return pending; }, get penDive() { return penDive; }, get mode() { return lastMode; }, matchStats, commitFoul, setAim, incomingBall, armedKind, humanSetKick, inPenArea, penPending, spHold, testSetPiece: (type, x, z, team) => { pending = { type, x, z, team }; beginSetPiece(); }, updateHUD, updateVisuals, get arrowVisible() { return spArrow.visible; }, setClock: (v) => { clock = v; }, get aimRingVisible() { return aimRing.visible; }, camera, renderer, scene, sun, shadowProxyVerts, setGfx, autoGfx, get gfx() { return gfxName; }, get rep() { return rep; }, endReplay, REC, get gt() { return gt; }, setPaused: (v) => { paused = v; }, sky: (o) => { Object.assign(SUN, o.sun || {}); Object.assign(SKY, o); buildSky(); placeSun(); }, shootDown, shootUp, passDown: (hold) => { passDown(); if (!hold) passUp(); }, passUp, slideDown, input, setControlled, giveBall,
   F7, MODE, TEAM_N, FORMS, STYLES, PEN_SPOT, WALL_D, setFormation, setHomeTactic, pickAwayTactic, refreshTacticUI, formationPos, kickoffSpot, lineupRow,
